@@ -42,7 +42,7 @@ type AssetDeployment struct {
 
 func ConfigTargets(paths UserPaths) map[string]string {
 	return map[string]string{
-		"assets/wezterm.lua":                      filepath.Join(paths.Home, ".wezterm.lua"),
+		"assets/.wezterm.lua":                     filepath.Join(paths.Home, ".wezterm.lua"),
 		"assets/Microsoft.PowerShell_profile.ps1": filepath.Join(paths.Documents, "PowerShell", "Microsoft.PowerShell_profile.ps1"),
 		"assets/jmr.omp.json":                     filepath.Join(paths.Home, ".config", "oh-my-posh", "jmr.omp.json"),
 	}
@@ -50,7 +50,7 @@ func ConfigTargets(paths UserPaths) map[string]string {
 
 func DeployConfigAssets(paths UserPaths) ([]AssetDeployment, error) {
 	targets := ConfigTargets(paths)
-	order := []string{"assets/wezterm.lua", "assets/Microsoft.PowerShell_profile.ps1", "assets/jmr.omp.json"}
+	order := []string{"assets/.wezterm.lua", "assets/Microsoft.PowerShell_profile.ps1", "assets/jmr.omp.json"}
 	deployments := make([]AssetDeployment, 0, len(order))
 	for _, name := range order {
 		data, err := fs.ReadFile(managedAssets, name)

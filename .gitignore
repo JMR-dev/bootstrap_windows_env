@@ -1,0 +1,6 @@
+bootstrap_windows_env.exe
+dist/
+bin/
+*.test
+coverage
+coverage.out

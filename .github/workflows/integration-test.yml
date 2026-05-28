@@ -2,6 +2,7 @@ name: integration-test
 
 on:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build-and-run:

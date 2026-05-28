@@ -61,3 +61,20 @@ func TestParseOptionsAcceptsHeadlessWithDryRunAndCustomRepo(t *testing.T) {
 		t.Fatalf("opts = %#v", opts)
 	}
 }
+
+func TestParseOptionsAcceptsNoRestorePoints(t *testing.T) {
+	opts, err := ParseOptions([]string{"--yes", "--no-restore-points"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !opts.NoRestorePoints {
+		t.Fatalf("expected NoRestorePoints to be set: %#v", opts)
+	}
+	defaults, err := ParseOptions(nil, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if defaults.NoRestorePoints {
+		t.Fatal("NoRestorePoints should default to false")
+	}
+}

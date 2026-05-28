@@ -12,7 +12,7 @@ type OSPhaseResult struct {
 	Stop    bool
 }
 
-func RunOSPhase(ctx context.Context, runner Runner) OSPhaseResult {
+func RunOSPhase(ctx context.Context, runner Runner, noRestorePoints bool) OSPhaseResult {
 	var result OSPhaseResult
 	if issue := runOSCommand(ctx, runner, "install Windows updates", WindowsUpdateCommand()); issue.Err != nil {
 		result.Issues = append(result.Issues, issue)
@@ -25,15 +25,19 @@ func RunOSPhase(ctx context.Context, runner Runner) OSPhaseResult {
 		result.Stop = true
 		return result
 	}
-	if issue := runOSCommand(ctx, runner, "create restore point before OS configuration", RestorePointCommand("bootstrap_windows_env: before OS configuration")); issue.Err != nil {
-		result.Issues = append(result.Issues, issue)
-		result.Stop = true
-		return result
+	if noRestorePoints {
+		result.Notices = append(result.Notices, "Skipped System Restore checkpoints (--no-restore-points). Checkpoint-Computer is unsupported on Windows Server SKUs.")
+	} else {
+		if issue := runOSCommand(ctx, runner, "create restore point before OS configuration", RestorePointCommand("bootstrap_windows_env: before OS configuration")); issue.Err != nil {
+			result.Issues = append(result.Issues, issue)
+			result.Stop = true
+			return result
+		}
 	}
 	if issue := runOSCommand(ctx, runner, "run Chris Titus Tech WinUtil", WinUtilCommand()); issue.Err != nil {
 		result.Issues = append(result.Issues, issue)
 	}
-	for _, step := range []struct {
+	steps := []struct {
 		name  string
 		cmd   CommandSpec
 		fatal bool
@@ -45,8 +49,15 @@ func RunOSPhase(ctx context.Context, runner Runner) OSPhaseResult {
 		{"set Vivaldi default browser associations", VivaldiDefaultBrowserCommand(), false},
 		{"update Microsoft Store apps", StoreUpdateCommand(), false},
 		{"apply taskbar pins", TaskbarCommand(), false},
-		{"create restore point before package installation", RestorePointCommand("bootstrap_windows_env: before package installation"), true},
-	} {
+	}
+	if !noRestorePoints {
+		steps = append(steps, struct {
+			name  string
+			cmd   CommandSpec
+			fatal bool
+		}{"create restore point before package installation", RestorePointCommand("bootstrap_windows_env: before package installation"), true})
+	}
+	for _, step := range steps {
 		if issue := runOSCommand(ctx, runner, step.name, step.cmd); issue.Err != nil {
 			result.Issues = append(result.Issues, issue)
 			if step.fatal {

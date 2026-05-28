@@ -30,7 +30,10 @@ Tagged GitHub releases build and upload a precompiled `bootstrap_windows_env.exe
 .\bootstrap_windows_env.exe --only wsl
 .\bootstrap_windows_env.exe --no-ai
 .\bootstrap_windows_env.exe --no-wsl
+.\bootstrap_windows_env.exe --no-restore-points
 ```
+
+`--no-restore-points` skips the two System Restore checkpoints in the `os` phase. Use this on Windows Server SKUs (including GitHub Actions `windows-latest` runners), where `Checkpoint-Computer` is not supported.
 
 ## Phases
 

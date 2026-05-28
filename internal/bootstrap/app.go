@@ -106,8 +106,13 @@ func PrintPlan(out io.Writer, plan Plan, opts Options) {
 		}
 		if phase == PhaseOS {
 			fmt.Fprintln(out, "  os: install Windows/Microsoft updates and stop before packages if reboot is required")
-			fmt.Fprintln(out, "  os: create restore point, run WinUtil config, apply developer/power/update/UI/store/taskbar defaults")
-			fmt.Fprintln(out, "  os: create second restore point before host package installation")
+			if opts.NoRestorePoints {
+				fmt.Fprintln(out, "  os: skip System Restore checkpoints (--no-restore-points)")
+				fmt.Fprintln(out, "  os: run WinUtil config, apply developer/power/update/UI/store/taskbar defaults")
+			} else {
+				fmt.Fprintln(out, "  os: create restore point, run WinUtil config, apply developer/power/update/UI/store/taskbar defaults")
+				fmt.Fprintln(out, "  os: create second restore point before host package installation")
+			}
 		}
 		if phase == PhaseConfig {
 			fmt.Fprintln(out, "  config: deploy managed WezTerm, PowerShell, oh-my-posh, and Neovim config")
@@ -189,7 +194,7 @@ func (b *Bootstrapper) Run(ctx context.Context, opts Options) (runErr error) {
 
 func (b *Bootstrapper) runOSPhase(ctx context.Context, report *RunReport) OSPhaseResult {
 	report.Event("phase os started")
-	result := RunOSPhase(ctx, b.Runner)
+	result := RunOSPhase(ctx, b.Runner, report.Options.NoRestorePoints)
 	for _, notice := range result.Notices {
 		b.recordNotice(report, notice)
 	}

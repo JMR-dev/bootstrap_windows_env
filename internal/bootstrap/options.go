@@ -26,6 +26,7 @@ type Options struct {
 	Yes              bool
 	DryRun           bool
 	Headless         bool
+	NoRestorePoints  bool
 	LinuxReleaseRepo string
 }
 
@@ -40,6 +41,7 @@ func ParseOptions(args []string, stderr io.Writer) (Options, error) {
 	fs.BoolVar(&opts.Yes, "yes", false, "execute the displayed plan without confirmation")
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "detect state and display work without making changes")
 	fs.BoolVar(&opts.Headless, "headless", false, "disable interactive login offers and require --yes to execute")
+	fs.BoolVar(&opts.NoRestorePoints, "no-restore-points", false, "skip System Restore checkpoints (required on Windows Server/CI where Checkpoint-Computer is unsupported)")
 	fs.StringVar(&opts.LinuxReleaseRepo, "linux-release-repo", "JMR-dev/bootstrap_dev_env", "GitHub repository containing Linux bootstrap releases")
 	if err := fs.Parse(args); err != nil {
 		return Options{}, err

@@ -18,4 +18,4 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           go build -o dist/bootstrap_windows_env.exe ./cmd/bootstrap_windows_env
       - name: Run
-        run: ./dist/bootstrap_windows_env.exe --yes --headless --no-wsl
+        run: ./dist/bootstrap_windows_env.exe --yes --headless --no-wsl --no-restore-points

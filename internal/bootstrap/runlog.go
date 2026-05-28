@@ -66,13 +66,14 @@ func WriteRunLog(paths UserPaths, report *RunReport) (string, error) {
 		fmt.Fprintf(&b, "duration: %s\n", report.Finished.Sub(report.Started).Round(time.Second))
 	}
 	fmt.Fprintf(&b, "phases: %s\n", phasesForLog(report.Phases))
-	fmt.Fprintf(&b, "options: only=%s no-ai=%t no-wsl=%t yes=%t dry-run=%t headless=%t linux-release-repo=%s\n",
+	fmt.Fprintf(&b, "options: only=%s no-ai=%t no-wsl=%t yes=%t dry-run=%t headless=%t no-restore-points=%t linux-release-repo=%s\n",
 		report.Options.Only,
 		report.Options.NoAI,
 		report.Options.NoWSL,
 		report.Options.Yes,
 		report.Options.DryRun,
 		report.Options.Headless,
+		report.Options.NoRestorePoints,
 		report.Options.LinuxReleaseRepo,
 	)
 	if report.FinalError != "" {

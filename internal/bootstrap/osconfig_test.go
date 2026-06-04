@@ -10,7 +10,7 @@ import (
 func TestWinUtilCommandUsesManagedConfigAndRunFlag(t *testing.T) {
 	cmd := WinUtilCommand()
 	joined := strings.Join(cmd.Args, " ")
-	for _, want := range []string{"christitus.com/win", "-Config", "winutil-sane-default.json", "-Run"} {
+	for _, want := range []string{"christitus.com/win", "-Config", "winutil-sane-default.json", "-Noui"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("WinUtil command missing %q: %s", want, joined)
 		}
@@ -51,7 +51,7 @@ func TestRunOSPhaseStopsBeforeRestorePointWhenRebootIsRequired(t *testing.T) {
 		commandKey(update.Name, update.Args...): {},
 		commandKey(reboot.Name, reboot.Args...): {Stdout: "true\n"},
 	}, defaultErr: true}
-	result := RunOSPhase(context.Background(), runner, false)
+	result := RunOSPhase(context.Background(), runner)
 	if !result.Stop {
 		t.Fatal("expected OS phase to stop for pending reboot")
 	}
@@ -65,7 +65,7 @@ func TestRunOSPhaseStopsBeforeRestorePointWhenRebootIsRequired(t *testing.T) {
 
 func TestRunOSPhaseRunsSecondRestorePointAfterConfiguration(t *testing.T) {
 	runner := &fakeRunner{}
-	result := RunOSPhase(context.Background(), runner, false)
+	result := RunOSPhase(context.Background(), runner)
 	if result.Stop {
 		t.Fatalf("OS phase unexpectedly stopped: %#v", result)
 	}
@@ -84,7 +84,7 @@ func TestRunOSPhaseContinuesAfterNonRestoreFailure(t *testing.T) {
 	runner := &fakeRunner{responses: map[string]CommandResult{
 		commandKey(update.Name, update.Args...): {Err: context.Canceled, Stderr: "update failed"},
 	}}
-	result := RunOSPhase(context.Background(), runner, false)
+	result := RunOSPhase(context.Background(), runner)
 	if result.Stop {
 		t.Fatalf("non-restore failure should be reported but should not stop the OS phase: %#v", result)
 	}
@@ -102,7 +102,7 @@ func TestRunOSPhaseStopsWhenSecondRestorePointFails(t *testing.T) {
 	runner := &fakeRunner{responses: map[string]CommandResult{
 		commandKey(second.Name, second.Args...): {Err: context.Canceled, Stderr: "restore failed"},
 	}}
-	result := RunOSPhase(context.Background(), runner, false)
+	result := RunOSPhase(context.Background(), runner)
 	if !result.Stop {
 		t.Fatal("expected OS phase to stop when final restore point fails")
 	}
@@ -117,7 +117,7 @@ func TestRunOSPhaseStopsWhenFirstRestorePointFails(t *testing.T) {
 	runner := &fakeRunner{responses: map[string]CommandResult{
 		commandKey(first.Name, first.Args...): {Err: errors.New("restore failed"), Stderr: "blocked"},
 	}}
-	result := RunOSPhase(context.Background(), runner, false)
+	result := RunOSPhase(context.Background(), runner)
 	if !result.Stop {
 		t.Fatal("expected first restore point failure to stop OS phase")
 	}
@@ -135,7 +135,7 @@ func TestRunOSPhaseRecordsWinUtilFailureAndContinuesToFinalRestorePoint(t *testi
 	runner := &fakeRunner{responses: map[string]CommandResult{
 		commandKey(winutil.Name, winutil.Args...): {Err: errors.New("winutil failed"), Stderr: "script failed"},
 	}}
-	result := RunOSPhase(context.Background(), runner, false)
+	result := RunOSPhase(context.Background(), runner)
 	if result.Stop {
 		t.Fatalf("WinUtil failure should not stop OS phase: %#v", result)
 	}
@@ -160,7 +160,7 @@ func TestRunOSPhaseRecordsRebootProbeFailureAndContinues(t *testing.T) {
 	runner := &fakeRunner{responses: map[string]CommandResult{
 		commandKey(reboot.Name, reboot.Args...): {Err: errors.New("probe failed"), Stderr: "bad registry"},
 	}}
-	result := RunOSPhase(context.Background(), runner, false)
+	result := RunOSPhase(context.Background(), runner)
 	if result.Stop {
 		t.Fatalf("reboot probe failure should be recorded but should not stop OS phase: %#v", result)
 	}
@@ -169,40 +169,6 @@ func TestRunOSPhaseRecordsRebootProbeFailureAndContinues(t *testing.T) {
 	}
 	if !runner.called(second.Name, second.Args...) {
 		t.Fatal("expected final restore point after reboot probe failure")
-	}
-}
-
-func TestRunOSPhaseSkipsRestorePointsWhenDisabled(t *testing.T) {
-	runner := &fakeRunner{}
-	result := RunOSPhase(context.Background(), runner, true)
-	if result.Stop {
-		t.Fatalf("OS phase unexpectedly stopped: %#v", result)
-	}
-	if err := result.Issues.Err(); err != nil {
-		t.Fatal(err)
-	}
-	first := RestorePointCommand("bootstrap_windows_env: before OS configuration")
-	second := RestorePointCommand("bootstrap_windows_env: before package installation")
-	if runner.called(first.Name, first.Args...) || runner.called(second.Name, second.Args...) {
-		t.Fatal("restore point commands should not run when --no-restore-points is set")
-	}
-	winutil := WinUtilCommand()
-	if !runner.called(winutil.Name, winutil.Args...) {
-		t.Fatal("expected WinUtil to still run when restore points are skipped")
-	}
-	power := PowerPolicyCommand()
-	if !runner.called(power.Name, power.Args...) {
-		t.Fatal("expected later configuration steps to still run when restore points are skipped")
-	}
-	var found bool
-	for _, n := range result.Notices {
-		if strings.Contains(n, "Skipped System Restore checkpoints") {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("expected skip notice in result.Notices, got %#v", result.Notices)
 	}
 }
 

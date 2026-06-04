@@ -30,10 +30,7 @@ Tagged GitHub releases build and upload a precompiled `bootstrap_windows_env.exe
 .\bootstrap_windows_env.exe --only wsl
 .\bootstrap_windows_env.exe --no-ai
 .\bootstrap_windows_env.exe --no-wsl
-.\bootstrap_windows_env.exe --no-restore-points
 ```
-
-`--no-restore-points` skips the two System Restore checkpoints in the `os` phase. Use this on Windows Server SKUs (including GitHub Actions `windows-latest` runners), where `Checkpoint-Computer` is not supported.
 
 ## Phases
 
@@ -48,6 +45,24 @@ Visual Studio Community 2026 is installed as `Microsoft.VisualStudio.Community` 
 `config` deploys managed WezTerm, PowerShell profile, and `oh-my-posh` assets, backs up differing existing files with numbered suffixes, clones `JMR-dev/nvim-config`, and optionally offers interactive GitHub/SSH setup.
 
 `wsl` enables WSL prerequisites, installs the current official `FedoraLinux-*` distro reported by `wsl --list --online`, stops for reboot or first-launch username creation when needed, then invokes the latest Linux bootstrap release with `--wsl --headless --yes`.
+
+## Tests
+
+Unit tests run on every pull request via `.github/workflows/unit-test.yml`:
+
+```powershell
+go test ./...
+```
+
+End-to-end integration runs against a real Windows client VM through Vagrant +
+Hyper-V. It is not run in CI (GitHub-hosted runners are Windows Server and have
+no Hyper-V), so execute it locally:
+
+```powershell
+go run ./test/integration
+```
+
+See `test/integration/README.md` for prerequisites, flags, and tuning options.
 
 ## Current Deferrals
 

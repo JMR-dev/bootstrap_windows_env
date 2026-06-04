@@ -2,7 +2,9 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os/exec"
 	"strings"
 )
 
@@ -44,7 +46,12 @@ func EnableHyperV(ctx context.Context, runner Runner, status HyperVStatus) (stri
 	}
 	result := runner.Run(ctx, "dism.exe", "/Online", "/Enable-Feature", "/FeatureName:Microsoft-Hyper-V-All", "/All", "/NoRestart")
 	if result.Err != nil {
-		return "", fmt.Errorf("enable Hyper-V: %w: %s", result.Err, result.CombinedOutput())
+		var exitErr *exec.ExitError
+		if errors.As(result.Err, &exitErr) && exitErr.ExitCode() == 3010 {
+			// 3010 is ERROR_SUCCESS_REBOOT_REQUIRED
+		} else {
+			return "", fmt.Errorf("enable Hyper-V: %w: %s", result.Err, result.CombinedOutput())
+		}
 	}
 	return "Hyper-V features were enabled; restart Windows and rerun to complete Vagrant provider setup.", nil
 }

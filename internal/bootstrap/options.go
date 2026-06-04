@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 )
 
 // Phase identifies a resumable unit of Windows provisioning work.
@@ -25,9 +26,12 @@ type Options struct {
 	NoWSL            bool
 	Yes              bool
 	DryRun           bool
-	Headless         bool
-	NoRestorePoints  bool
 	LinuxReleaseRepo string
+	Nvidia           bool
+	NvidiaModel      string
+	NvidiaType       string
+	Amd              bool
+	Intel            bool
 }
 
 func ParseOptions(args []string, stderr io.Writer) (Options, error) {
@@ -40,9 +44,12 @@ func ParseOptions(args []string, stderr io.Writer) (Options, error) {
 	fs.BoolVar(&opts.NoWSL, "no-wsl", false, "omit Fedora WSL provisioning and guest bootstrap")
 	fs.BoolVar(&opts.Yes, "yes", false, "execute the displayed plan without confirmation")
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "detect state and display work without making changes")
-	fs.BoolVar(&opts.Headless, "headless", false, "disable interactive login offers and require --yes to execute")
-	fs.BoolVar(&opts.NoRestorePoints, "no-restore-points", false, "skip System Restore checkpoints (required on Windows Server/CI where Checkpoint-Computer is unsupported)")
 	fs.StringVar(&opts.LinuxReleaseRepo, "linux-release-repo", "JMR-dev/bootstrap_dev_env", "GitHub repository containing Linux bootstrap releases")
+	fs.BoolVar(&opts.Nvidia, "nvidia", false, "fetch and install Nvidia driver")
+	fs.StringVar(&opts.NvidiaModel, "model", "", "Nvidia GPU model (e.g. RTX 4090)")
+	fs.StringVar(&opts.NvidiaType, "type", "", "Nvidia driver type (Game Ready or Studio)")
+	fs.BoolVar(&opts.Amd, "amd", false, "fetch and run AMD auto-detection graphics driver tool")
+	fs.BoolVar(&opts.Intel, "intel", false, "fetch and install Intel Driver & Support Assistant")
 	if err := fs.Parse(args); err != nil {
 		return Options{}, err
 	}
@@ -60,8 +67,21 @@ func ParseOptions(args []string, stderr io.Writer) (Options, error) {
 	if opts.NoWSL && opts.Only == PhaseWSL {
 		return Options{}, fmt.Errorf("--only wsl cannot be combined with --no-wsl")
 	}
-	if opts.Headless && !opts.Yes && !opts.DryRun {
-		return Options{}, fmt.Errorf("--headless execution requires --yes or --dry-run")
+	if opts.Nvidia && opts.Amd && opts.Intel && os.Getenv("BOOTSTRAP_INTEGRATION_TEST") != "true" {
+		return Options{}, fmt.Errorf("cannot combine --nvidia, --amd, and --intel")
+	}
+	if opts.Nvidia {
+		if opts.NvidiaModel == "" {
+			return Options{}, fmt.Errorf("--nvidia requires --model flag")
+		}
+		if opts.NvidiaType == "" {
+			return Options{}, fmt.Errorf("--nvidia requires --type flag")
+		}
+		if opts.NvidiaType != "Game Ready" && opts.NvidiaType != "Studio" {
+			return Options{}, fmt.Errorf("invalid --type value %q: use Game Ready or Studio", opts.NvidiaType)
+		}
+	} else if opts.NvidiaModel != "" || opts.NvidiaType != "" {
+		return Options{}, fmt.Errorf("--model and --type require --nvidia flag")
 	}
 	return opts, nil
 }

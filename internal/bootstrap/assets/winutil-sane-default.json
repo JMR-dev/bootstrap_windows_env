@@ -8,8 +8,6 @@
   "WPFTweaksLocation",
   "WPFTweaksServices",
   "WPFTweaksTelemetry",
-  "WPFTweaksDiskCleanup",
-  "WPFTweaksDeleteTempFiles",
   "WPFTweaksEndTaskOnTaskbar",
   "WPFTweaksPowershell7Tele"
 ]

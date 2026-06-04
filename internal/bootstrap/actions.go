@@ -19,7 +19,7 @@ type Action struct {
 	AI       bool
 }
 
-const refreshPath = `$env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User'); `
+const refreshPath = `$env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User')+';C:\ProgramData\chocolatey\bin'; if (Get-Command fnm -ErrorAction SilentlyContinue) { fnm env --shell powershell | Invoke-Expression }; `
 
 func powerShell(script string) CommandSpec {
 	return CommandSpec{
@@ -32,21 +32,63 @@ func checkedNativePowerShell(command string) CommandSpec {
 	return powerShell(`$ErrorActionPreference='Stop'; ` + command + `; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }`)
 }
 
-func HostActions() []Action {
-	return []Action{
+func HostActions(opts Options) []Action {
+	actions := []Action{
 		{
-			Name:  "Node.js LTS through fnm",
+			Name:  "Visual Studio Community 2026",
 			Phase: PhaseHost,
-			Probe: checkedNativePowerShell(`fnm exec --using=lts-latest node --version`),
+			Probe: powerShell(`if (Test-Path "${env:ProgramFiles}\Microsoft Visual Studio\2026\Community\Common7\IDE\devenv.exe") { exit 0 } else { exit 1 }`),
 			Commands: []CommandSpec{
-				checkedNativePowerShell(`fnm install --lts`),
-				checkedNativePowerShell(`fnm default lts-latest`),
+				powerShell(fmt.Sprintf(
+					`$tempExe = Join-Path $env:TEMP 'vs_community.exe'; `+
+						`if (Test-Path $tempExe) { Remove-Item -Force $tempExe }; `+
+						`[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `+
+						`Write-Host 'Downloading Visual Studio 2026 bootstrapper...'; `+
+						`Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vs_community.exe' -OutFile $tempExe -UseBasicParsing -ErrorAction Stop; `+
+						`Unblock-File -Path $tempExe; `+
+						`Write-Host 'Installing Visual Studio 2026 with workloads...'; `+
+						`$p = Start-Process -FilePath $tempExe -ArgumentList '--passive --wait --config "%s"' -Wait -PassThru; `+
+						`if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { throw 'Visual Studio installation failed with exit code ' + $p.ExitCode }`,
+					mustInstallAssetPath("assets/visual-studio-community.vsconfig"),
+				)),
+			},
+		},
+		{
+			Name:  "fnm and Node.js LTS",
+			Phase: PhaseHost,
+			Probe: powerShell(`fnm exec --using=lts-latest node --version | Out-Null; if ($LASTEXITCODE -ne 0) { exit 1 }`),
+			Commands: []CommandSpec{
+				powerShell(`$ErrorActionPreference='Stop'
+function Invoke-Native {
+    param([Parameter(Mandatory=$true)][string]$File, [Parameter(Mandatory=$true)][string[]]$Arguments)
+    & $File @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "$File $($Arguments -join ' ') failed with exit code $LASTEXITCODE"
+    }
+}
+$scoop = Get-Command scoop -ErrorAction SilentlyContinue
+$scoopShim = Join-Path $HOME 'scoop\shims\scoop.ps1'
+if ($scoop) {
+    Invoke-Native $scoop.Source @('install', 'fnm')
+} elseif (Test-Path $scoopShim) {
+    Invoke-Native $scoopShim @('install', 'fnm')
+} elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+    Invoke-Native 'choco' @('install', 'fnm', '-y', '--no-progress')
+} else {
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+    Invoke-RestMethod -Uri 'https://community.chocolatey.org/install.ps1' | Invoke-Expression
+    $env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User')
+    Invoke-Native 'choco' @('install', 'fnm', '-y', '--no-progress')
+}
+$env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User')
+Invoke-Native 'fnm' @('install', '--lts')
+Invoke-Native 'fnm' @('default', 'lts-latest')`),
 			},
 		},
 		{
 			Name:  "pyenv-win through Scoop or Chocolatey",
 			Phase: PhaseHost,
-			Probe: checkedNativePowerShell(`pyenv --version`),
+			Probe: powerShell(`pyenv --version | Out-Null; if ($LASTEXITCODE -ne 0) { exit 1 }`),
 			Commands: []CommandSpec{
 				powerShell(`$ErrorActionPreference='Stop'
 function Invoke-Native {
@@ -65,7 +107,8 @@ if ($scoop) {
 } elseif (Get-Command choco -ErrorAction SilentlyContinue) {
     Invoke-Native 'choco' @('install', 'pyenv-win', '-y', '--no-progress')
 } else {
-    Invoke-Native 'winget' @('install', '--id', 'Chocolatey.Chocolatey', '--exact', '--source', 'winget', '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity')
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+    Invoke-RestMethod -Uri 'https://community.chocolatey.org/install.ps1' | Invoke-Expression
     $env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User')
     Invoke-Native 'choco' @('install', 'pyenv-win', '-y', '--no-progress')
 }`),
@@ -74,7 +117,7 @@ if ($scoop) {
 		{
 			Name:  "latest stable Python through pyenv-win",
 			Phase: PhaseHost,
-			Probe: powerShell(`$v = pyenv version-name 2>$null; if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($v) -or $v.Trim() -eq 'system') { exit 1 }`),
+			Probe: powerShell(`$v = pyenv version-name; if ([string]::IsNullOrWhiteSpace($v) -or $v -eq 'system') { exit 1 }`),
 			Commands: []CommandSpec{
 				powerShell(`$ErrorActionPreference='Stop'
 function Invoke-Native {
@@ -84,20 +127,34 @@ function Invoke-Native {
         throw "$File $($Arguments -join ' ') failed with exit code $LASTEXITCODE"
     }
 }
-$v=(pyenv install --list | Select-String '^\s*3\.\d+\.\d+\s*$' | ForEach-Object {$_.Line.Trim()} | Sort-Object {[version]$_} -Descending | Select-Object -First 1)
-if (-not $v) { throw 'no stable Python version found' }
+$env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User')
+$out = Invoke-Native 'pyenv' @('install', '-l')
+$v = $out -split '\r?\n' | Where-Object { $_ -match '^\s*3\.\d+\.\d+\s*$' } | Sort-Object -Descending | Select-Object -First 1
+if (-not $v) { throw 'No stable Python 3.x version found' }
+$v = $v.Trim()
 Invoke-Native 'pyenv' @('install', '-s', $v)
-Invoke-Native 'pyenv' @('global', $v)`),
+Invoke-Native 'pyenv' @('global', $v)
+Invoke-Native 'pyenv' @('exec', 'python', '-m', 'pip', 'install', '--upgrade', 'pip')
+`),
 			},
 		},
 		{
-			Name:  "VLC default media player associations",
+			Name:  "semgrep",
 			Phase: PhaseHost,
-			Probe: powerShell(`$marker = Join-Path $env:ProgramData 'bootstrap_windows_env\vlc-default-media.done'; if (-not (Test-Path $marker)) { exit 1 }`),
+			Probe: powerShell(`$env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User'); pyenv exec semgrep --version | Out-Null; if ($LASTEXITCODE -ne 0) { exit 1 }`),
 			Commands: []CommandSpec{
-				powerShell(`$ErrorActionPreference='Stop'
-$stateDir = Join-Path $env:ProgramData 'bootstrap_windows_env'
-New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
+				checkedNativePowerShell(`$env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User'); pyenv exec pip install semgrep`),
+			},
+		},
+	}
+
+	actions = append(actions, Action{
+		Name:  "VLC default media player associations",
+		Phase: PhaseHost,
+		Probe: powerShell(`$stateDir = Join-Path $env:ProgramData 'bootstrap_windows_env'; if (-not (Test-Path (Join-Path $stateDir 'vlc-default-media.done'))) { exit 1 }`),
+		Commands: []CommandSpec{
+			powerShell(`$stateDir = Join-Path $env:ProgramData 'bootstrap_windows_env'
+if (-not (Test-Path $stateDir)) { New-Item -ItemType Directory -Force -Path $stateDir | Out-Null }
 $vlcPaths = @(
     (Join-Path $env:ProgramFiles 'VideoLAN\VLC\vlc.exe'),
     (Join-Path ${env:ProgramFiles(x86)} 'VideoLAN\VLC\vlc.exe')
@@ -106,8 +163,7 @@ if ($vlcPaths.Count -eq 0 -and -not (Get-Command vlc.exe -ErrorAction SilentlyCo
     throw 'VLC is not installed or is not discoverable.'
 }
 $extensions = @(
-    '.3g2', '.3gp', '.aac', '.aiff', '.alac', '.amr', '.ape', '.asf', '.au',
-    '.avi', '.divx', '.flac', '.flv', '.m2ts', '.m4a', '.m4v', '.mka', '.mkv',
+    '.3g2', '.3gp', '.3gp2', '.3gpp', '.amv', '.asf', '.avi', '.divx', '.flac', '.flv', '.m2ts', '.m4a', '.m4v', '.mka', '.mkv',
     '.mov', '.mp2', '.mp3', '.mp4', '.mp4v', '.mpeg', '.mpg', '.mts', '.oga',
     '.ogg', '.ogm', '.ogv', '.opus', '.ts', '.vob', '.wav', '.webm', '.wma', '.wmv'
 )
@@ -149,9 +205,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 Set-Content -Path (Join-Path $stateDir 'vlc-default-media.done') -Value (Get-Date -Format o) -Encoding UTF8
 Write-Output "Imported VLC default media associations from $xmlPath. Windows may still require user confirmation for an existing signed-in profile."`),
-			},
 		},
-	}
+	})
+
+	return actions
 }
 
 func CustomActions(opts Options) []Action {
@@ -170,8 +227,8 @@ func CustomActions(opts Options) []Action {
 			Phase: PhaseCustom,
 			Probe: powerShell(`npm list --global playwright --depth=0 | Out-Null; if ($LASTEXITCODE -ne 0) { exit 1 }`),
 			Commands: []CommandSpec{
-				checkedNativePowerShell(`fnm exec --using=lts-latest npm install --global playwright`),
-				checkedNativePowerShell(`fnm exec --using=lts-latest playwright install`),
+				checkedNativePowerShell(`npm install --global playwright`),
+				checkedNativePowerShell(`playwright install`),
 			},
 		},
 		{
@@ -188,7 +245,7 @@ func CustomActions(opts Options) []Action {
 			AI:    true,
 			Probe: powerShell(`npm list --global '@anthropic-ai/claude-code' --depth=0 | Out-Null; if ($LASTEXITCODE -ne 0) { exit 1 }`),
 			Commands: []CommandSpec{
-				checkedNativePowerShell(`fnm exec --using=lts-latest npm install --global '@anthropic-ai/claude-code'`),
+				checkedNativePowerShell(`npm install --global '@anthropic-ai/claude-code'`),
 			},
 		},
 		{
@@ -197,7 +254,7 @@ func CustomActions(opts Options) []Action {
 			AI:    true,
 			Probe: powerShell(`npm list --global '@openai/codex' --depth=0 | Out-Null; if ($LASTEXITCODE -ne 0) { exit 1 }`),
 			Commands: []CommandSpec{
-				checkedNativePowerShell(`fnm exec --using=lts-latest npm install --global '@openai/codex'`),
+				checkedNativePowerShell(`npm install --global '@openai/codex'`),
 			},
 		},
 		{
@@ -206,7 +263,7 @@ func CustomActions(opts Options) []Action {
 			AI:    true,
 			Probe: powerShell(`npm list --global '@github/copilot' --depth=0 | Out-Null; if ($LASTEXITCODE -ne 0) { exit 1 }`),
 			Commands: []CommandSpec{
-				checkedNativePowerShell(`fnm exec --using=lts-latest npm install --global '@github/copilot'`),
+				checkedNativePowerShell(`npm install --global '@github/copilot'`),
 			},
 		},
 	}

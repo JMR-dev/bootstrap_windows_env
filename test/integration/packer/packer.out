@@ -1,0 +1,78 @@
+Warning: A checksum of 'none' was specified. Since ISO files are so big,
+a checksum is highly recommended.
+
+  on .\windows-11.pkr.hcl line 83:
+  (source code not available)
+
+
+hyperv-iso.win11: output will be in this color.
+
+==> hyperv-iso.win11: Creating build directory...
+==> hyperv-iso.win11: Retrieving ISO
+==> hyperv-iso.win11: Trying C:/Users/jasonross/Downloads/Win11_25H2_English_x64_v2(1).iso
+==> hyperv-iso.win11: Trying file://C:/Users/jasonross/Downloads/Win11_25H2_English_x64_v2%281%29.iso
+==> hyperv-iso.win11: file://C:/Users/jasonross/Downloads/Win11_25H2_English_x64_v2%281%29.iso => C:/Users/jasonross/Downloads/Win11_25H2_English_x64_v2(1).iso
+==> hyperv-iso.win11: Creating switch 'Default Switch' if required...
+==> hyperv-iso.win11:     switch 'Default Switch' already exists. Will not delete on cleanup...
+==> hyperv-iso.win11: Creating virtual machine...
+==> hyperv-iso.win11: Enabling Integration Service...
+==> hyperv-iso.win11: Setting boot drive to os dvd drive C:/Users/jasonross/Downloads/Win11_25H2_English_x64_v2(1).iso ...
+==> hyperv-iso.win11: Mounting os dvd drive C:/Users/jasonross/Downloads/Win11_25H2_English_x64_v2(1).iso ...
+==> hyperv-iso.win11: Skipping mounting Integration Services Setup Disk...
+==> hyperv-iso.win11: Creating CD disk...
+==> hyperv-iso.win11: OSCDIMG 2.56 CD-ROM and DVD-ROM Premastering Utility
+==> hyperv-iso.win11: Copyright (C) Microsoft, 1993-2012. All rights reserved.
+==> hyperv-iso.win11: Licensed only for producing Microsoft authorized content.
+==> hyperv-iso.win11: Scanning source tree
+==> hyperv-iso.win11: Scanning source tree complete (2 files in 1 directories)
+==> hyperv-iso.win11: Computing directory information complete
+==> hyperv-iso.win11: Image file is 61440 bytes (before optimization)
+==> hyperv-iso.win11: Writing 2 files in 1 directories to C:\Users\jasonross\AppData\Local\Temp\packer2666332811.iso
+==> hyperv-iso.win11: Storage optimization saved 0 files, 0 bytes (0% of image)
+==> hyperv-iso.win11: After optimization, image file is 61440 bytes
+==> hyperv-iso.win11: Done.
+==> hyperv-iso.win11: 100% complete
+==> hyperv-iso.win11: Done copying paths from CD_dirs
+==> hyperv-iso.win11: Mounting secondary DVD images...
+==> hyperv-iso.win11: Mounting secondary dvd drive C:\Users\jasonross\AppData\Local\Temp\packer2666332811.iso ...
+==> hyperv-iso.win11: Configuring vlan...
+==> hyperv-iso.win11: Determine Host IP for HyperV machine...
+==> hyperv-iso.win11: Host IP for the HyperV machine: 172.25.16.1
+==> hyperv-iso.win11: Attempting to connect with vmconnect...
+==> hyperv-iso.win11: Starting the virtual machine...
+==> hyperv-iso.win11: Waiting 1s for boot...
+==> hyperv-iso.win11: Typing the boot command...
+==> hyperv-iso.win11: Waiting for WinRM to become available...
+==> hyperv-iso.win11: WinRM connected.
+==> hyperv-iso.win11: Connected to WinRM!
+==> hyperv-iso.win11: Provisioning with Powershell...
+==> hyperv-iso.win11: Provisioning with powershell script: ./scripts/configure-os.ps1
+==> hyperv-iso.win11: Script exited with non-zero exit status: 2147943462. Allowed exit codes are: [0]
+==> hyperv-iso.win11: Step "StepProvision" failed, aborting...
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepConnect"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepTypeBootCommand"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepRun"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepSetFirstBootDevice"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepSetBootOrder"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepConfigureVlan"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepMountSecondaryDvdImages"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepCreateCD"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepMountGuestAdditions"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepMountFloppydrive"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepMountDvdDrive"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepEnableIntegrationService"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepCreateVM"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepCreateSwitch"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepHTTPServer"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepCreateFloppy"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepDownload"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepOutputDir"
+==> hyperv-iso.win11: aborted: skipping cleanup of step "StepCreateBuildDir"
+Build 'hyperv-iso.win11' errored after 16 minutes 59 seconds: Script exited with non-zero exit status: 2147943462. Allowed exit codes are: [0]
+
+==> Wait completed after 16 minutes 59 seconds
+
+==> Some builds didn't complete successfully and had errors:
+--> hyperv-iso.win11: Script exited with non-zero exit status: 2147943462. Allowed exit codes are: [0]
+
+==> Builds finished but no artifacts were created.

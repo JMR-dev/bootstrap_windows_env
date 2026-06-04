@@ -1,6 +1,14 @@
-bootstrap_windows_env.exe
+*.exe
 dist/
 bin/
 *.test
 coverage
 coverage.out
+test_out.txt
+*.log
+
+
+# Local environment overrides (e.g. test/integration/packer/.env).
+.env
+*.box
+.vagrant/

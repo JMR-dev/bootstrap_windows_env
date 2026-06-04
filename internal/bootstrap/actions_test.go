@@ -27,12 +27,12 @@ func TestCustomActionsNoAIStillKeepsPlaywrightAndExtension(t *testing.T) {
 }
 
 func TestRuntimeAndCustomDependencyOrdering(t *testing.T) {
-	host := HostActions()
-	if len(host) != 4 || host[0].Name != "Node.js LTS through fnm" || host[1].Name != "pyenv-win through Scoop or Chocolatey" || host[2].Name != "latest stable Python through pyenv-win" || host[3].Name != "VLC default media player associations" {
+	host := HostActions(Options{})
+	if len(host) != 6 || host[0].Name != "Visual Studio Community 2026" || host[1].Name != "fnm and Node.js LTS" || host[2].Name != "pyenv-win through Scoop or Chocolatey" || host[3].Name != "latest stable Python through pyenv-win" || host[4].Name != "semgrep" || host[5].Name != "VLC default media player associations" {
 		t.Fatalf("unexpected host action order: %#v", host)
 	}
-	pyenvInstall := strings.Join(host[1].Commands[0].Args, " ")
-	for _, want := range []string{"scoop", "Invoke-Native 'choco' @('install', 'pyenv-win'", "Chocolatey.Chocolatey"} {
+	pyenvInstall := strings.Join(host[2].Commands[0].Args, " ")
+	for _, want := range []string{"scoop", "Invoke-Native 'choco' @('install', 'pyenv-win'", "community.chocolatey.org"} {
 		if !strings.Contains(pyenvInstall, want) {
 			t.Fatalf("pyenv install command missing %q: %s", want, pyenvInstall)
 		}
@@ -57,7 +57,7 @@ func TestRuntimeAndCustomDependencyOrdering(t *testing.T) {
 }
 
 func TestVLCDefaultMediaActionCoversCommonAudioVideoExtensions(t *testing.T) {
-	host := HostActions()
+	host := HostActions(Options{})
 	vlc := host[len(host)-1]
 	script := strings.Join(vlc.Commands[0].Args, " ")
 	for _, want := range []string{

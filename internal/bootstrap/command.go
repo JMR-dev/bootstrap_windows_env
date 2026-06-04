@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 	"time"
@@ -26,6 +27,7 @@ type Runner interface {
 
 type ExecRunner struct {
 	Timeout time.Duration
+	Stream  io.Writer
 }
 
 func (r ExecRunner) Run(ctx context.Context, name string, args ...string) CommandResult {
@@ -37,11 +39,23 @@ func (r ExecRunner) Run(ctx context.Context, name string, args ...string) Comman
 	defer cancel()
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	cmd.Cancel = func() error {
+		if cmd.Process == nil {
+			return nil
+		}
+		_ = exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", cmd.Process.Pid)).Run()
+		return cmd.Process.Kill()
+	}
+	if r.Stream != nil {
+		cmd.Stdout = io.MultiWriter(r.Stream, &stdout)
+		cmd.Stderr = io.MultiWriter(r.Stream, &stderr)
+	} else {
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+	}
 	err := cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
-		err = fmt.Errorf("%s timed out after %s", name, timeout)
+		err = fmt.Errorf("%s timed out", name)
 	}
 	return CommandResult{
 		Command: name + " " + strings.Join(args, " "),

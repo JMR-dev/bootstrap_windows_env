@@ -17,10 +17,10 @@ const (
 type Package struct {
 	Name              string
 	Phase             Phase
-	WingetID          string
-	WingetSource      string
-	WingetOverride    string
-	WingetConfigAsset string
+	ChocoID           string
+	ChocoParams       string
+	InstallerArgs     string
+	ChocoConfigAsset  string
 	Class             Classification
 	RequiresElevation bool
 	Reboot            RebootBehavior
@@ -28,95 +28,107 @@ type Package struct {
 	AI                bool
 }
 
-func wingetPackage(name, id string, phase Phase, class Classification) Package {
+func chocoPackage(name, id string, phase Phase, class Classification) Package {
 	return Package{
-		Name:         name,
-		Phase:        phase,
-		WingetID:     id,
-		WingetSource: "winget",
-		Class:        class,
-		Reboot:       RebootNone,
+		Name:    name,
+		Phase:   phase,
+		ChocoID: id,
+		Class:   class,
+		Reboot:  RebootNone,
 	}
 }
 
 // Catalog is deliberately explicit: unlisted software is not installed by a fallback provider.
 func Catalog() []Package {
 	packages := []Package{
-		{
-			Name:              "Visual Studio Community 2026",
-			Phase:             PhaseHost,
-			WingetID:          "Microsoft.VisualStudio.Community",
-			WingetSource:      "winget",
-			WingetOverride:    "--passive --config {config}",
-			WingetConfigAsset: "assets/visual-studio-community.vsconfig",
-			Class:             ClassGUI,
-			RequiresElevation: true,
-			Reboot:            RebootPossible,
-			PostInstall:       "install workloads/components from managed .vsconfig; use Microsoft C/C++ compilers and CMake",
+		chocoPackage("WezTerm", "wezterm", PhaseHost, ClassGUI),
+		chocoPackage("PowerShell 7", "powershell-core", PhaseHost, ClassHeadless),
+		chocoPackage("PowerToys", "powertoys", PhaseHost, ClassGUI),
+		chocoPackage("JetBrainsMono Nerd Font", "nerd-fonts-jetbrainsmono", PhaseHost, ClassHeadless),
+		chocoPackage("Android Studio", "androidstudio", PhaseHost, ClassGUI),
+		// FilePilot has no official Chocolatey package, but it's listed here.
+		// We use empty ChocoID so our custom installer downloads and installs it directly.
+		chocoPackage("FilePilot", "", PhaseHost, ClassGUI),
+		chocoPackage("Vivaldi", "vivaldi", PhaseHost, ClassGUI),
+		chocoPackage("OBS Studio", "obs-studio", PhaseHost, ClassGUI),
+		chocoPackage("Obsidian", "obsidian", PhaseHost, ClassGUI),
+		chocoPackage("Libre Hardware Monitor", "librehardwaremonitor", PhaseHost, ClassGUI),
+		chocoPackage("WireGuard", "wireguard", PhaseHost, ClassGUI),
+		chocoPackage("Steam", "steam", PhaseHost, ClassGUI),
+		chocoPackage("Bruno", "bruno", PhaseHost, ClassGUI),
+		chocoPackage("VLC", "vlc", PhaseHost, ClassGUI),
+		chocoPackage("Wireshark", "wireshark", PhaseHost, ClassGUI),
+		chocoPackage("HandBrake", "handbrake", PhaseHost, ClassGUI),
+		chocoPackage("Gpg4win (includes gpgOL)", "gpg4win", PhaseHost, ClassGUI),
+		chocoPackage("Tor Browser", "tor-browser", PhaseHost, ClassGUI),
+		chocoPackage("LibreWolf", "librewolf", PhaseHost, ClassGUI),
+		chocoPackage("Rufus", "rufus", PhaseHost, ClassGUI),
+		chocoPackage("Slack", "slack", PhaseHost, ClassGUI),
+		chocoPackage("Discord", "discord", PhaseHost, ClassGUI),
+		chocoPackage("Revo Uninstaller", "revo-uninstaller", PhaseHost, ClassGUI),
+		chocoPackage("darktable", "darktable", PhaseHost, ClassGUI),
+		chocoPackage("Floorp", "floorp", PhaseHost, ClassGUI),
+		chocoPackage("Krita", "krita", PhaseHost, ClassGUI),
+		chocoPackage("Godot C++", "godot", PhaseHost, ClassGUI),
+		chocoPackage("Blender", "blender", PhaseHost, ClassGUI),
+		chocoPackage("Git", "git", PhaseHost, ClassHeadless),
+		chocoPackage("GitHub CLI", "gh", PhaseHost, ClassHeadless),
+		chocoPackage("Neovim", "neovim", PhaseHost, ClassHeadless),
+		chocoPackage("trivy", "trivy", PhaseHost, ClassHeadless),
+		chocoPackage("cosign", "cosign", PhaseHost, ClassHeadless),
+		chocoPackage("gitleaks", "gitleaks", PhaseHost, ClassHeadless),
+		chocoPackage("jq", "jq", PhaseHost, ClassHeadless),
+		chocoPackage("yq", "yq", PhaseHost, ClassHeadless),
+		chocoPackage("fzf", "fzf", PhaseHost, ClassHeadless),
+		chocoPackage("fd", "fd", PhaseHost, ClassHeadless),
+		chocoPackage("bottom", "bottom", PhaseHost, ClassHeadless),
+		chocoPackage("ripgrep", "ripgrep", PhaseHost, ClassHeadless),
+		chocoPackage("FFmpeg", "ffmpeg", PhaseHost, ClassHeadless),
+		chocoPackage("lazygit", "lazygit", PhaseHost, ClassHeadless),
+		chocoPackage("Lua", "lua", PhaseHost, ClassHeadless),
+		chocoPackage("minisign", "minisign", PhaseHost, ClassHeadless),
+		chocoPackage("Google Cloud CLI", "gcloudsdk", PhaseHost, ClassHeadless),
+		chocoPackage("Rustup", "rustup.install", PhaseHost, ClassHeadless),
+		chocoPackage("AWS CLI", "awscli", PhaseHost, ClassHeadless),
+		chocoPackage("Azure CLI", "azure-cli", PhaseHost, ClassHeadless),
+		chocoPackage("Pulumi", "pulumi", PhaseHost, ClassHeadless),
+		chocoPackage("restic", "restic", PhaseHost, ClassHeadless),
+		chocoPackage("yt-dlp", "yt-dlp", PhaseHost, ClassHeadless),
+		chocoPackage("Vagrant", "vagrant", PhaseHost, ClassHeadless),
+		chocoPackage("Go", "golang", PhaseHost, ClassHeadless),
+		chocoPackage(".NET SDK", "dotnet-sdk", PhaseHost, ClassHeadless),
+		chocoPackage("Temurin JDK", "temurin", PhaseHost, ClassHeadless),
+		chocoPackage("Zig", "zig", PhaseHost, ClassHeadless),
+		chocoPackage("CMake", "cmake", PhaseHost, ClassHeadless),
+		chocoPackage("oh-my-posh", "oh-my-posh", PhaseCustom, ClassHeadless),
+		chocoPackage("Google Chrome", "googlechrome", PhaseCustom, ClassGUI),
+		chocoPackage("Mullvad VPN", "mullvad-app", PhaseCustom, ClassGUI),
+		chocoPackage("Figma", "figma", PhaseCustom, ClassGUI),
+		chocoPackage("Zoom", "zoom", PhaseCustom, ClassGUI),
+		chocoPackage("Adobe Acrobat Reader", "adobereader", PhaseCustom, ClassGUI),
+		chocoPackage("WhatsApp", "", PhaseCustom, ClassGUI),
+		chocoPackage("Affinity", "", PhaseCustom, ClassGUI),
+		chocoPackage("Tidal", "", PhaseCustom, ClassGUI),
+		chocoPackage("DaVinci Resolve", "", PhaseCustom, ClassGUI),
+		chocoPackage("Ardour", "", PhaseCustom, ClassGUI),
+		chocoPackage("Nvidia Driver", "", PhaseHost, ClassGUI),
+		chocoPackage("Nvidia Broadcast", "", PhaseHost, ClassGUI),
+		chocoPackage("AMD Auto-Detect", "", PhaseHost, ClassGUI),
+		chocoPackage("Intel DSA", "", PhaseHost, ClassGUI),
+		Package{
+			Name:          "Nmap",
+			Phase:         PhaseCustom,
+			ChocoID:       "nmap",
+			InstallerArgs: `"/S /NPCAP=NO"`,
+			Class:         ClassHeadless,
+			Reboot:        RebootNone,
 		},
-		wingetPackage("WezTerm", "wez.wezterm", PhaseHost, ClassGUI),
-		wingetPackage("PowerShell 7", "Microsoft.PowerShell", PhaseHost, ClassHeadless),
-		wingetPackage("PowerToys", "Microsoft.PowerToys", PhaseHost, ClassGUI),
-		wingetPackage("JetBrainsMono Nerd Font", "DEVCOM.JetBrainsMonoNerdFont", PhaseHost, ClassHeadless),
-		wingetPackage("Android Studio", "Google.AndroidStudio", PhaseHost, ClassGUI),
-		wingetPackage("FilePilot", "Voidstar.FilePilot", PhaseHost, ClassGUI),
-		wingetPackage("GitHub Desktop", "GitHub.GitHubDesktop", PhaseHost, ClassGUI),
-		wingetPackage("Google Chrome", "Google.Chrome", PhaseHost, ClassGUI),
-		wingetPackage("Vivaldi", "Vivaldi.Vivaldi", PhaseHost, ClassGUI),
-		wingetPackage("OBS Studio", "OBSProject.OBSStudio", PhaseHost, ClassGUI),
-		wingetPackage("Obsidian", "Obsidian.Obsidian", PhaseHost, ClassGUI),
-		wingetPackage("Libre Hardware Monitor", "LibreHardwareMonitor.LibreHardwareMonitor", PhaseHost, ClassGUI),
-		wingetPackage("Mullvad VPN", "MullvadVPN.MullvadVPN", PhaseHost, ClassGUI),
-		wingetPackage("WireGuard", "WireGuard.WireGuard", PhaseHost, ClassGUI),
-		wingetPackage("Steam", "Valve.Steam", PhaseHost, ClassGUI),
-		wingetPackage("Bruno", "Bruno.Bruno", PhaseHost, ClassGUI),
-		wingetPackage("Figma", "Figma.Figma", PhaseHost, ClassGUI),
-		wingetPackage("VLC", "VideoLAN.VLC", PhaseHost, ClassGUI),
-		wingetPackage("Wireshark", "WiresharkFoundation.Wireshark", PhaseHost, ClassGUI),
-		wingetPackage("Zoom", "Zoom.Zoom", PhaseHost, ClassGUI),
-		wingetPackage("HandBrake", "HandBrake.HandBrake", PhaseHost, ClassGUI),
-		wingetPackage("Adobe Acrobat Reader", "Adobe.Acrobat.Reader.64-bit", PhaseHost, ClassGUI),
-		wingetPackage("Gpg4win (includes gpgOL)", "GnuPG.Gpg4win", PhaseHost, ClassGUI),
-		wingetPackage("Tor Browser", "TorProject.TorBrowser", PhaseHost, ClassGUI),
-		wingetPackage("LibreWolf", "LibreWolf.LibreWolf", PhaseHost, ClassGUI),
-		wingetPackage("Rufus", "Rufus.Rufus", PhaseHost, ClassGUI),
-		wingetPackage("Slack", "SlackTechnologies.Slack", PhaseHost, ClassGUI),
-		wingetPackage("Discord", "Discord.Discord", PhaseHost, ClassGUI),
-		wingetPackage("Revo Uninstaller", "RevoUninstaller.RevoUninstaller", PhaseHost, ClassGUI),
-		wingetPackage("darktable", "darktable.darktable", PhaseHost, ClassGUI),
-		wingetPackage("Floorp", "Ablaze.Floorp", PhaseHost, ClassGUI),
-		wingetPackage("Git", "Git.Git", PhaseHost, ClassHeadless),
-		wingetPackage("GitHub CLI", "GitHub.cli", PhaseHost, ClassHeadless),
-		wingetPackage("Neovim", "Neovim.Neovim", PhaseHost, ClassHeadless),
-		wingetPackage("ripgrep", "BurntSushi.ripgrep.MSVC", PhaseHost, ClassHeadless),
-		wingetPackage("FFmpeg", "Gyan.FFmpeg", PhaseHost, ClassHeadless),
-		wingetPackage("lazygit", "JesseDuffield.lazygit", PhaseHost, ClassHeadless),
-		wingetPackage("Lua", "DEVCOM.Lua", PhaseHost, ClassHeadless),
-		wingetPackage("minisign", "jedisct1.minisign", PhaseHost, ClassHeadless),
-		wingetPackage("Google Cloud CLI", "Google.CloudSDK", PhaseHost, ClassHeadless),
-		wingetPackage("Rustup", "Rustlang.Rustup", PhaseHost, ClassHeadless),
-		wingetPackage("AWS CLI", "Amazon.AWSCLI", PhaseHost, ClassHeadless),
-		wingetPackage("Azure CLI", "Microsoft.AzureCLI", PhaseHost, ClassHeadless),
-		wingetPackage("Pulumi", "Pulumi.Pulumi", PhaseHost, ClassHeadless),
-		wingetPackage("restic", "restic.restic", PhaseHost, ClassHeadless),
-		wingetPackage("yt-dlp", "yt-dlp.yt-dlp", PhaseHost, ClassHeadless),
-		wingetPackage("Vagrant", "Hashicorp.Vagrant", PhaseHost, ClassHeadless),
-		wingetPackage("Go", "GoLang.Go", PhaseHost, ClassHeadless),
-		wingetPackage(".NET SDK", "Microsoft.DotNet.SDK.10", PhaseHost, ClassHeadless),
-		wingetPackage("Temurin JDK", "EclipseAdoptium.Temurin.21.JDK", PhaseHost, ClassHeadless),
-		wingetPackage("Zig", "zig.zig", PhaseHost, ClassHeadless),
-		wingetPackage("CMake", "Kitware.CMake", PhaseHost, ClassHeadless),
-		wingetPackage("fnm", "Schniz.fnm", PhaseHost, ClassHeadless),
-		wingetPackage("oh-my-posh", "JanDeDobbeleer.OhMyPosh", PhaseCustom, ClassHeadless),
 	}
 	for i := range packages {
 		if packages[i].Name == "Vagrant" {
 			packages[i].RequiresElevation = true
 			packages[i].Reboot = RebootPossible
 			packages[i].PostInstall = "configure Hyper-V provider prerequisites"
-		}
-		if packages[i].Name == "fnm" {
-			packages[i].PostInstall = "install Node.js LTS"
 		}
 	}
 	return packages
@@ -127,6 +139,28 @@ func PackagesForPhase(opts Options, phase Phase) []Package {
 	for _, pkg := range Catalog() {
 		if pkg.Phase != phase || (opts.NoAI && pkg.AI) {
 			continue
+		}
+		if pkg.Name == "Nvidia Driver" {
+			if !opts.Nvidia {
+				continue
+			}
+			pkg.ChocoParams = opts.NvidiaModel
+			pkg.InstallerArgs = opts.NvidiaType
+		}
+		if pkg.Name == "Nvidia Broadcast" {
+			if !opts.Nvidia || !isRTX2050OrNewer(opts.NvidiaModel) {
+				continue
+			}
+		}
+		if pkg.Name == "AMD Auto-Detect" {
+			if !opts.Amd {
+				continue
+			}
+		}
+		if pkg.Name == "Intel DSA" {
+			if !opts.Intel {
+				continue
+			}
 		}
 		selected = append(selected, pkg)
 	}

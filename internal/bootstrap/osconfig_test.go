@@ -10,7 +10,7 @@ import (
 func TestWinUtilCommandUsesManagedConfigAndRunFlag(t *testing.T) {
 	cmd := WinUtilCommand()
 	joined := strings.Join(cmd.Args, " ")
-	for _, want := range []string{"christitus.com/win", "-Config", "winutil-sane-default.json", "-Run"} {
+	for _, want := range []string{"christitus.com/win", "-Config", "winutil-sane-default.json", "-Noui"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("WinUtil command missing %q: %s", want, joined)
 		}

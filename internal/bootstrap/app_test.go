@@ -25,7 +25,7 @@ func TestRunWithOSDoesNotProbePackagesBeforeWindowsUpdate(t *testing.T) {
 		},
 	}
 
-	if err := app.Run(context.Background(), Options{Yes: true, NoWSL: true, Headless: true}); err != nil {
+	if err := app.Run(context.Background(), Options{Yes: true, NoWSL: true}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -65,7 +65,7 @@ func TestRunStopsAfterOSRebootNotice(t *testing.T) {
 		Err:    &bytes.Buffer{},
 		Paths:  testUserPaths(temp),
 	}
-	if err := app.Run(context.Background(), Options{Yes: true, NoWSL: true, Headless: true}); err != nil {
+	if err := app.Run(context.Background(), Options{Yes: true, NoWSL: true}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "require a reboot") {
@@ -90,7 +90,7 @@ func TestNewBootstrapperInitializesDefaults(t *testing.T) {
 }
 
 func TestBuildPlanWrapperAndPrintPlanShowStatuses(t *testing.T) {
-	pkg := Package{Name: "Git", WingetID: "Git.Git", WingetSource: "winget", Phase: PhaseHost}
+	pkg := Package{Name: "Git", ChocoID: "git", Phase: PhaseHost}
 	action := Action{Name: "done action"}
 	plan := BuildPlan(context.Background(), &fakeRunner{}, Options{Only: PhaseOS})
 	if len(plan.Phases) != 1 || plan.Phases[0] != PhaseOS {
@@ -103,7 +103,7 @@ func TestBuildPlanWrapperAndPrintPlanShowStatuses(t *testing.T) {
 		PackageStates: map[Phase][]PackageState{
 			PhaseHost: {
 				{Package: pkg, Installed: true},
-				{Package: Package{Name: "Broken", WingetID: "Broken.ID"}, CheckErr: errors.New("check failed")},
+				{Package: Package{Name: "Broken", ChocoID: "Broken.ID"}, CheckErr: errors.New("check failed")},
 			},
 		},
 		ActionStates: map[Phase][]ActionState{
@@ -174,7 +174,7 @@ func TestRunOnlyHostSkipsOSAndExecutesHostPlan(t *testing.T) {
 		Err:    &bytes.Buffer{},
 		Paths:  testUserPaths(temp),
 	}
-	if err := app.Run(context.Background(), Options{Only: PhaseHost, Yes: true, Headless: true}); err != nil {
+	if err := app.Run(context.Background(), Options{Only: PhaseHost, Yes: true}); err != nil {
 		t.Fatal(err)
 	}
 	update := WindowsUpdateCommand()
@@ -263,7 +263,7 @@ func TestRunConfigPhaseRecordsDeploymentIssue(t *testing.T) {
 			Documents:    filepath.Join(temp, "docs"),
 		},
 	}
-	issues := app.runConfigPhase(context.Background(), Options{Headless: true})
+	issues := app.runConfigPhase(context.Background(), Options{})
 	if len(issues) == 0 || !strings.Contains(issues[0].Step, "deploy managed config") {
 		t.Fatalf("issues = %#v, want deployment issue", issues)
 	}
@@ -280,13 +280,13 @@ func TestRunConfigPhaseRecordsNeovimIssue(t *testing.T) {
 		Err:   &bytes.Buffer{},
 		Paths: testUserPaths(temp),
 	}
-	issues := app.runConfigPhase(context.Background(), Options{Headless: true})
+	issues := app.runConfigPhase(context.Background(), Options{})
 	if len(issues) != 1 || issues[0].Step != "clone Neovim config" {
 		t.Fatalf("issues = %#v, want Neovim clone issue", issues)
 	}
 }
 
-func TestRunConfigPhaseOffersAuthWhenInteractive(t *testing.T) {
+func TestRunOffersAuthWhenInteractive(t *testing.T) {
 	temp := t.TempDir()
 	pub := filepath.Join(temp, "home", ".ssh", "id_ed25519.pub")
 	if err := os.MkdirAll(filepath.Dir(pub), 0o755); err != nil {
@@ -297,13 +297,13 @@ func TestRunConfigPhaseOffersAuthWhenInteractive(t *testing.T) {
 	}
 	app := &Bootstrapper{
 		Runner: &fakeRunner{},
-		In:     strings.NewReader(""),
+		In:     strings.NewReader("y\n"),
 		Out:    &bytes.Buffer{},
 		Err:    &bytes.Buffer{},
 		Paths:  testUserPaths(temp),
 	}
-	if issues := app.runConfigPhase(context.Background(), Options{}); issues.Err() != nil {
-		t.Fatalf("issues = %#v", issues)
+	if err := app.Run(context.Background(), Options{Only: PhaseConfig}); err != nil {
+		t.Fatalf("Run err = %v", err)
 	}
 	if !app.Runner.(*fakeRunner).called("gh", "auth", "status") {
 		t.Fatal("expected interactive auth status check")
@@ -351,7 +351,7 @@ func TestOfferInteractiveAuthCoversLoginFailure(t *testing.T) {
 		Err:    &bytes.Buffer{},
 		Paths:  UserPaths{Home: temp},
 	}
-	issues := app.offerInteractiveAuth(context.Background())
+	issues := app.offerInteractiveAuth(context.Background(), Options{})
 	if len(issues) != 1 || issues[0].Step != "gh auth login" {
 		t.Fatalf("issues = %#v, want login failure", issues)
 	}
@@ -374,7 +374,7 @@ func TestOfferInteractiveAuthCoversSSHUploadFailure(t *testing.T) {
 		Err:    &bytes.Buffer{},
 		Paths:  UserPaths{Home: temp},
 	}
-	issues := app.offerInteractiveAuth(context.Background())
+	issues := app.offerInteractiveAuth(context.Background(), Options{})
 	if len(issues) != 1 || issues[0].Step != "gh ssh-key add" {
 		t.Fatalf("issues = %#v, want upload failure", issues)
 	}
@@ -398,7 +398,7 @@ func TestOfferInteractiveAuthCoversSSHDirectoryAndKeygenFailures(t *testing.T) {
 		Err:   &bytes.Buffer{},
 		Paths: UserPaths{Home: homeFile},
 	}
-	issues := app.offerInteractiveAuth(context.Background())
+	issues := app.offerInteractiveAuth(context.Background(), Options{})
 	if len(issues) != 1 || issues[0].Step != "create SSH directory" {
 		t.Fatalf("issues = %#v, want SSH directory failure", issues)
 	}
@@ -417,7 +417,7 @@ func TestOfferInteractiveAuthCoversSSHDirectoryAndKeygenFailures(t *testing.T) {
 		Err:    &bytes.Buffer{},
 		Paths:  UserPaths{Home: filepath.Join(temp, "home2")},
 	}
-	issues = app.offerInteractiveAuth(context.Background())
+	issues = app.offerInteractiveAuth(context.Background(), Options{})
 	if len(issues) != 1 || issues[0].Step != "ssh-keygen" {
 		t.Fatalf("issues = %#v, want ssh-keygen failure", issues)
 	}

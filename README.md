@@ -46,6 +46,24 @@ Visual Studio Community 2026 is installed as `Microsoft.VisualStudio.Community` 
 
 `wsl` enables WSL prerequisites, installs the current official `FedoraLinux-*` distro reported by `wsl --list --online`, stops for reboot or first-launch username creation when needed, then invokes the latest Linux bootstrap release with `--wsl --headless --yes`.
 
+## Tests
+
+Unit tests run on every pull request via `.github/workflows/unit-test.yml`:
+
+```powershell
+go test ./...
+```
+
+End-to-end integration runs against a real Windows client VM through Vagrant +
+Hyper-V. It is not run in CI (GitHub-hosted runners are Windows Server and have
+no Hyper-V), so execute it locally:
+
+```powershell
+go run ./test/integration
+```
+
+See `test/integration/README.md` for prerequisites, flags, and tuning options.
+
 ## Current Deferrals
 
 `Webcamoid` is deferred because no exact `winget` manifest was available during implementation. Native Docker Desktop, Podman Desktop, Buildah, Minikube, Firecracker, QEMU, virt-manager, Windows Terminal, and VS Code are also intentionally excluded from Windows v1.

@@ -2,16 +2,15 @@ package bootstrap
 
 import "testing"
 
-func TestCatalogContainsExactWingetIDsAndDefersExcludedNativeTools(t *testing.T) {
+func TestCatalogContainsExactChocoIDsAndDefersExcludedNativeTools(t *testing.T) {
 	seen := make(map[string]Package)
 	for _, pkg := range Catalog() {
-		if pkg.WingetID == "" || pkg.WingetSource != "winget" {
-			t.Fatalf("invalid winget metadata for %#v", pkg)
+		if pkg.ChocoID == "" && !isCustomPackage(pkg) {
+			t.Fatalf("invalid choco metadata for %#v", pkg)
 		}
 		seen[pkg.Name] = pkg
 	}
 	for _, name := range []string{
-		"Visual Studio Community 2026",
 		"Android Studio",
 		"FilePilot",
 		"PowerShell 7",
@@ -39,8 +38,16 @@ func TestCatalogContainsExactWingetIDsAndDefersExcludedNativeTools(t *testing.T)
 		"CMake",
 		"WezTerm",
 		"Vagrant",
-		"fnm",
 		"oh-my-posh",
+		"Nmap",
+		"Krita",
+		"Godot C++",
+		"Blender",
+		"WhatsApp",
+		"Affinity",
+		"Tidal",
+		"DaVinci Resolve",
+		"Ardour",
 	} {
 		if _, ok := seen[name]; !ok {
 			t.Fatalf("missing catalog package %s", name)
@@ -62,9 +69,5 @@ func TestCatalogContainsExactWingetIDsAndDefersExcludedNativeTools(t *testing.T)
 	}
 	if _, ok := seen["g++"]; ok {
 		t.Fatal("g++ should not be installed natively; use Visual Studio C/C++ tools")
-	}
-	vs := seen["Visual Studio Community 2026"]
-	if vs.WingetID != "Microsoft.VisualStudio.Community" || vs.WingetConfigAsset == "" || vs.WingetOverride == "" {
-		t.Fatalf("Visual Studio package missing managed config metadata: %#v", vs)
 	}
 }

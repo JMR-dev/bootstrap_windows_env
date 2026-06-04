@@ -1,0 +1,51 @@
+# Vagrantfile for the bootstrap_windows_env integration test.
+#
+# Driven by `go run ./test/integration` on a Windows host with Hyper-V enabled
+# and the `vagrant` CLI installed. All tunables are read from environment
+# variables so the Go driver can override them without editing this file.
+#
+# Required prerequisites on the host:
+#   - Windows 10/11 Pro/Enterprise or Windows Server with Hyper-V role enabled.
+#   - HashiCorp Vagrant >= 2.4 in PATH.
+#   - Host user is a member of the Hyper-V Administrators group.
+#
+# The default box `gusztavvargadr/windows-11` ships with WinRM enabled and the
+# `vagrant` / `vagrant` credentials hard-coded below.
+
+Vagrant.configure("2") do |config|
+  config.vm.box         = ENV.fetch("BOOTSTRAP_BOX", "gusztavvargadr/windows-11")
+  config.vm.box_version = ENV["BOOTSTRAP_BOX_VERSION"] unless ENV["BOOTSTRAP_BOX_VERSION"].to_s.empty?
+  config.vm.hostname    = ENV.fetch("BOOTSTRAP_HOSTNAME", "bootstrap-it")
+
+  config.vm.communicator    = "winrm"
+  config.vm.guest           = :windows
+  config.vm.boot_timeout    = Integer(ENV.fetch("BOOTSTRAP_BOOT_TIMEOUT", "1800"))
+  config.winrm.username     = ENV.fetch("BOOTSTRAP_WINRM_USER", "vagrant")
+  config.winrm.password     = ENV.fetch("BOOTSTRAP_WINRM_PASS", "vagrant")
+  config.winrm.timeout      = Integer(ENV.fetch("BOOTSTRAP_WINRM_TIMEOUT", "3600"))
+  config.winrm.retry_limit  = Integer(ENV.fetch("BOOTSTRAP_WINRM_RETRIES", "30"))
+
+  # Hyper-V cannot use the default rsync/SMB sync without prompting for
+  # credentials; the Go driver pushes the built binary in via `vagrant upload`
+  # instead, so disable the default synced folder.
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  if ENV["VAGRANT_HYPERV_VIRTUAL_SWITCH"]
+    config.vm.network "public_network", bridge: ENV["VAGRANT_HYPERV_VIRTUAL_SWITCH"]
+  end
+
+  config.vm.provider "hyperv" do |hv|
+    hv.cpus    = Integer(ENV.fetch("BOOTSTRAP_CPUS", "8"))
+    hv.memory  = Integer(ENV.fetch("BOOTSTRAP_MEMORY", "16384"))
+    hv.maxmemory = Integer(ENV.fetch("BOOTSTRAP_MAX_MEMORY", "16384"))
+    hv.enable_virtualization_extensions = true
+    hv.linked_clone = true
+    hv.vm_integration_services = {
+      guest_service_interface: true,
+      heartbeat:               true,
+      shutdown:                true,
+      time_synchronization:    true,
+      vss:                     true,
+    }
+  end
+end

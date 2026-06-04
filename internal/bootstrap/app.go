@@ -62,7 +62,7 @@ func BuildPlanForPhases(ctx context.Context, runner Runner, opts Options, phases
 		}
 		switch phase {
 		case PhaseHost:
-			actions := HostActions()
+			actions := HostActions(opts)
 			if checkState {
 				plan.ActionStates[phase] = CheckActions(ctx, runner, actions)
 			} else {
@@ -93,7 +93,7 @@ func PrintPlan(out io.Writer, plan Plan, opts Options) {
 				} else if state.CheckErr != nil {
 					status = "check failed; will retry install"
 				}
-				fmt.Fprintf(out, "  winget: %s (%s) - %s\n", state.Package.Name, state.Package.WingetID, status)
+				fmt.Fprintf(out, "  choco: %s (%s) - %s\n", state.Package.Name, state.Package.ChocoID, status)
 			}
 		}
 		actions := plan.ActionStates[phase]
@@ -122,9 +122,6 @@ func PrintPlan(out io.Writer, plan Plan, opts Options) {
 }
 
 func (b *Bootstrapper) Run(ctx context.Context, opts Options) (runErr error) {
-	if b.Runner == nil {
-		b.Runner = ExecRunner{Timeout: 45 * time.Minute}
-	}
 	if b.In == nil {
 		b.In = os.Stdin
 	}
@@ -133,6 +130,9 @@ func (b *Bootstrapper) Run(ctx context.Context, opts Options) (runErr error) {
 	}
 	if b.Err == nil {
 		b.Err = os.Stderr
+	}
+	if b.Runner == nil {
+		b.Runner = ExecRunner{Timeout: 45 * time.Minute, Stream: b.Out}
 	}
 
 	phases := SelectedPhases(opts)
@@ -180,10 +180,15 @@ func (b *Bootstrapper) Run(ctx context.Context, opts Options) (runErr error) {
 			PrintPlan(b.Out, plan, opts)
 			issues = append(issues, b.executeCheckedPlan(ctx, plan, opts, report)...)
 		}
-		return issues.Err()
+	} else {
+		issues = append(issues, b.executeCheckedPlan(ctx, plan, opts, report)...)
 	}
 
-	issues = append(issues, b.executeCheckedPlan(ctx, plan, opts, report)...)
+	if opts.Includes(PhaseConfig) {
+		authIssues := b.offerInteractiveAuth(ctx, opts)
+		b.recordIssues(report, &issues, authIssues)
+	}
+
 	return issues.Err()
 }
 
@@ -300,14 +305,14 @@ func (b *Bootstrapper) runConfigPhase(ctx context.Context, opts Options) Issues 
 	if !IsEmptyIssue(issue) {
 		issues = append(issues, issue)
 	}
-	if !opts.Headless {
-		issues = append(issues, b.offerInteractiveAuth(ctx)...)
-	}
 	return issues
 }
 
-func (b *Bootstrapper) offerInteractiveAuth(ctx context.Context) Issues {
+func (b *Bootstrapper) offerInteractiveAuth(ctx context.Context, opts Options) Issues {
 	var issues Issues
+	if opts.Yes || IsSessionZero() {
+		return issues
+	}
 	if result := b.Runner.Run(ctx, "gh", "auth", "status"); result.Err != nil {
 		if confirm(b.In, b.Out, "Run `gh auth login` now? [y/N] ") {
 			login := b.Runner.Run(ctx, "gh", "auth", "login")
@@ -341,6 +346,9 @@ func (b *Bootstrapper) offerInteractiveAuth(ctx context.Context) Issues {
 }
 
 func confirm(in io.Reader, out io.Writer, prompt string) bool {
+	if in == nil {
+		return false
+	}
 	fmt.Fprint(out, prompt)
 	scanner := bufio.NewScanner(in)
 	if !scanner.Scan() {

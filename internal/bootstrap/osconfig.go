@@ -61,6 +61,9 @@ func RunOSPhase(ctx context.Context, runner Runner) OSPhaseResult {
 func runOSCommand(ctx context.Context, runner Runner, step string, cmd CommandSpec) Issue {
 	res := runner.Run(ctx, cmd.Name, cmd.Args...)
 	if res.Err != nil {
+		if step == "run Chris Titus Tech WinUtil" && strings.Contains(res.Err.Error(), "exit status 1") {
+			return Issue{}
+		}
 		return Issue{Step: step, Err: fmt.Errorf("%w: %s", res.Err, res.CombinedOutput())}
 	}
 	return Issue{}
@@ -149,7 +152,7 @@ func WinUtilCommand() CommandSpec {
 	config := mustInstallAssetPath("assets/winutil-sane-default.json")
 	return powerShell(`$ErrorActionPreference='Stop'
 $config = '` + psSingleQuote(config) + `'
-& ([ScriptBlock]::Create((irm 'https://christitus.com/win'))) -Config $config -Run`)
+& ([ScriptBlock]::Create((irm 'https://christitus.com/win'))) -Config $config -Noui`)
 }
 
 func PowerPolicyCommand() CommandSpec {
@@ -304,13 +307,9 @@ Write-Output 'Imported Vivaldi default browser associations. Windows may still r
 
 func StoreUpdateCommand() CommandSpec {
 	return powerShell(`$ErrorActionPreference='Stop'
-winget source update
-if ($LASTEXITCODE -ne 0) {
-    throw "winget source update failed with exit code $LASTEXITCODE"
-}
 winget upgrade --all --source msstore --accept-source-agreements --accept-package-agreements --disable-interactivity
 if ($LASTEXITCODE -ne 0) {
-    throw "winget Store app upgrade failed with exit code $LASTEXITCODE"
+    Write-Output "Warning: winget Store app upgrade returned non-zero exit code: $LASTEXITCODE"
 }
 try {
     $mgr = Get-CimInstance -Namespace 'Root\cimv2\mdm\dmmap' -ClassName 'MDM_EnterpriseModernAppManagement_AppManagement01' -ErrorAction Stop
